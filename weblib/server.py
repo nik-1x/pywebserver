@@ -158,6 +158,9 @@ class App:
             host = config.host
         print(f"[init] host={host}, port={config.port}")
 
+    def get(self, key: str):
+        return self.variables.get(key)
+
     def run(self, mode: str = "dev"):
         def start():
             loop = asyncio.new_event_loop()

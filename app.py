@@ -8,12 +8,16 @@ app = App(
         host=IP('0.0.0.0'),
         port=Port(8080),
         debug=False
-    )
+    ),
+    variables={
+        'proj_name': 'Python Web Server Example',
+        'proj_version': '1.0.0',
+        'proj_author': 'Nick (astralyx.dev)'
+    }
 )
 
-
 @app.router.route('/dump', ['GET'], cache_func=True, cache_size=128)
-async def index(request):
+async def index(request: dict):
     return await Render.json(request)
 
 

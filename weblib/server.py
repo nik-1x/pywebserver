@@ -2,16 +2,22 @@ from dataclasses import dataclass
 import asyncio
 import socket
 from functools import lru_cache
-from .ipmanager import IP
+from .ipmanager import IP, Port
 from threading import Thread
 
 class Config:
 
-    def __init__(self, host: IP, port: int, debug: bool):
+    def __init__(self, host: IP, port: Port, debug: bool):
         if host.correct:
             self.host = str(host)
         else:
             self.host = '0.0.0.0'
+
+        if port.correct:
+            self.port = port.port
+        else:
+            self.port = 8080
+
         self.port = port
         self.debug = debug
 
@@ -137,11 +143,12 @@ class Listener:
 
 class App:
 
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, variables: dict = {}):
         self.config = config
         self.router: Router = Router()
         self.Listener = Listener(config, self.router)
         self.render = ResponseEngine()
+        self.variables = variables
 
         local_ip = socket.gethostbyname(socket.gethostname())
 

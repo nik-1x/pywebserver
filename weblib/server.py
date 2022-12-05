@@ -4,6 +4,7 @@ import socket
 from functools import lru_cache
 from .ipmanager import IP, Port
 from threading import Thread
+import json
 
 class Config:
 
@@ -50,21 +51,27 @@ class RequestEngine:
         pass
 
     async def parse(self, data) -> dict:
-        data = data.decode('utf-8').split('\r\n')
+
+        request_data = data.decode('utf-8').split('\r\n\r\n')
+        post_data = request_data[1]
+        variables = request_data[0].split('\r\n')
+
         found = {
-            "type": data[0],
-            "headers": {}
+            "type": variables[0],
+            "headers": {},
+            "data": post_data
         }
-        variables = data[1:]
-        for var in variables:
+
+        for var in variables[1:]:
             if var == '':
                 pass
             else:
-                v = var.split(': ')
-                found["headers"][v[0]] = v[1]
-        if "." in found['headers']['Host']:
-            subdomain = ".".join(found["headers"]["Host"].split(':')[0].split('.')[:-1])
-            found["subdomain"] = subdomain
+                try:
+                    v = var.split(': ')
+                    found["headers"][v[0]] = v[1]
+                except Exception as e:
+                    pass
+        
         return found
 
     async def contains(self, request, contains_list: list):
@@ -106,11 +113,14 @@ class Listener:
 
     async def task(self, serv_sock):
         client_sock, client_addr = serv_sock.accept()
-        data = await self.requestengine.parse(client_sock.recv(1024))
+        dat_ = client_sock.recv(1024)
+        data = await self.requestengine.parse(dat_)
+
         if data['type'] == '':
             return
         if self.config.debug == True:
             print(data['type'])
+
         map = data['type'].split(' ')
         look = map[1].split("?")
         path = look[0]
@@ -127,7 +137,12 @@ class Listener:
             router = self.router.routes[path]
             data["args"] = args
             if map[0] in router['methods']:
-                response = await router['func'](data)
+                try:
+                    response = await router['func'](data)
+                except Exception as e:
+                    response = await self.responseengine.response_builder(json.dumps({
+                        "error": str(e)
+                    }, sort_keys=True, indent=4), content_type="application/json")
                 client_sock.send(response)
             else:
                 client_sock.send(await self.responseengine.response_builder("Page not found"))
@@ -138,7 +153,11 @@ class Listener:
         serv_sock.bind((self.config.host, int(str(self.config.port))))
         serv_sock.listen(socket.SOMAXCONN)
         while True:
-            await self.task(serv_sock)
+            try:
+                await self.task(serv_sock)
+            except Exception as e:
+                print("Error: ", str(e))
+        serv_sock.close()
 
 
 class App:
@@ -163,14 +182,7 @@ class App:
 
     def run(self, mode: str = "dev"):
         def start():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            try:
-                loop.run_until_complete(self.Listener.listener())
-            finally:
-                loop.run_until_complete(loop.shutdown_asyncgens())
-                loop.close()
-
+            asyncio.run(self.Listener.listener())
         if mode == "dev":
             start()
         elif mode == "prod":

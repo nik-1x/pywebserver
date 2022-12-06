@@ -8,11 +8,11 @@ import time
 app = App(
     config=Config(
         host=IP('0.0.0.0'),
-        port=Port(8083),
+        port=Port(8001),
         debug=True
     ),
     variables={
-        'proj_name': 'TUQ API',
+        'proj_name': 'API Example',
         'proj_version': '1.0.0',
         'proj_author': 'Nick'
     }

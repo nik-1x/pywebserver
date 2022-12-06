@@ -53,7 +53,13 @@ class RequestEngine:
     async def parse(self, data) -> dict:
 
         request_data = data.decode('utf-8').split('\r\n\r\n')
-        post_data = request_data[1]
+        post_data = request_data[1] if len(request_data[1]) > 0 else False
+        if post_data:
+            try:
+                post_data = json.loads(request_data[1])
+            except:
+                pass
+
         variables = request_data[0].split('\r\n')
 
         found = {
@@ -91,10 +97,13 @@ class ResponseEngine:
         status: int = 200, 
         tstatus: str = "OK", 
         headers: dict = {}, 
+        cors: dict = {},
         content_type: str = "text/html", 
-        type: str = "HTTP/1.1"): 
+        type: str = "HTTP/1.1"):
 
         response = f"{type} {status} {tstatus}\r\n"
+        for key, val in cors:
+            response += f"{key}: {val}\r\n"
         response += f"Content-Type: {content_type}\r\n"
         response += "Content-Length: " + str(len(data)) + "\r\n"
         for headerkey, headerval in headers:
